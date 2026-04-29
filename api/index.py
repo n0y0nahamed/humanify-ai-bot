@@ -2,6 +2,7 @@ import os
 import io
 import random
 import requests
+import logging
 from flask import Flask, request, jsonify
 from PIL import Image
 import google.generativeai as genai
@@ -18,7 +19,8 @@ load_dotenv()
 app = Flask(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-​bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN, threaded=False)
+# threaded=False is strictly required for Vercel Serverless environments
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN, threaded=False)
 
 GROQ_KEYS = [os.getenv("GROQ_API_KEY_1"), os.getenv("GROQ_API_KEY_2"), os.getenv("GROQ_API_KEY_3")]
 GEMINI_KEYS = [os.getenv("GEMINI_API_KEY_1"), os.getenv("GEMINI_API_KEY_2")]
@@ -29,7 +31,6 @@ HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 # LOAD SKILLS
 # ==========================================
 def load_skill(filename):
-    # Resolve the absolute path for Vercel's serverless environment
     base_dir = os.path.dirname(os.path.dirname(__file__)) 
     file_path = os.path.join(base_dir, filename)
     try:
@@ -186,14 +187,30 @@ def image(message):
 def home():
     return "Bot is running perfectly on Vercel! 🚀", 200
 
-@app.route(f'/api/webhook', methods=['POST'])
+# Exposes deep telebot errors to the Vercel logs
+telebot.logger.setLevel(logging.DEBUG) 
+
+@app.route('/api/webhook', methods=['POST'])
 def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return '', 200
-    return 'Invalid Request', 403
+    try:
+        if request.headers.get('content-type') == 'application/json':
+            json_string = request.get_data().decode('utf-8')
+            print(f"📬 Payload from Telegram: {json_string}")
+            
+            update = telebot.types.Update.de_json(json_string)
+            
+            # DIRECT TEST: Verifies Vercel can ping the Telegram API
+            if update.message:
+                print(f"💬 Attempting to reply to chat_id: {update.message.chat.id}")
+                bot.send_message(update.message.chat.id, "✅ Testing: Webhook is alive and Vercel is sending messages!")
+            
+            bot.process_new_updates([update])
+            return 'OK', 200
+            
+        return 'Invalid Request', 403
+    except Exception as e:
+        print(f"🔥 CRITICAL BOT ERROR: {e}")
+        return 'Error', 500
 
 @app.route('/api/set_webhook', methods=['GET'])
 def set_webhook():
