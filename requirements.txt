@@ -1,5 +1,7 @@
-pyTelegramBotAPI
-python-dotenv
-requests
-groq
-google-generativeai
+pyTelegramBotAPI==4.14.0
+Flask==3.0.0
+groq==0.4.2
+google-generativeai==0.3.2
+requests==2.31.0
+pillow==10.2.0
+python-dotenv==1.0.0
