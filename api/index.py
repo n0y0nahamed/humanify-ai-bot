@@ -218,3 +218,37 @@ def set_webhook():
     bot.remove_webhook()
     bot.set_webhook(url=webhook_url)
     return f"✅ Webhook successfully set to: {webhook_url}", 200
+    def try_groq(system_prompt, user_text):
+    keys = [k for k in GROQ_KEYS if k]
+    random.shuffle(keys)
+    for key in keys:
+        try:
+            client = Groq(api_key=key)
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text}],
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e: 
+            print(f"❌ GROQ ERROR: {e}") # This will now show up in Vercel logs!
+            continue
+    return None
+
+def try_gemini(system_prompt, user_text, image_data=None):
+    keys = [k for k in GEMINI_KEYS if k]
+    random.shuffle(keys)
+    for key in keys:
+        try:
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            contents = [system_prompt + "\n\nUser Context:\n" + user_text]
+            if image_data:
+                img = Image.open(io.BytesIO(image_data))
+                contents.append(img)
+            response = model.generate_content(contents)
+            return response.text
+        except Exception as e: 
+            print(f"❌ GEMINI ERROR: {e}") # This will now show up in Vercel logs!
+            continue
+    return None
