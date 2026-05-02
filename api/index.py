@@ -87,7 +87,8 @@ def try_together(system_prompt, user_text):
         data = {"model": "meta-llama/Llama-3-8b-chat-hf", "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_text}]}
         r = requests.post(url, headers=headers, json=data)
         return r.json()["choices"][0]["message"]["content"]
-    except:
+    except Exception as e:
+        print(f"❌ TOGETHER ERROR: {e}")
         return None
 
 def try_huggingface(system_prompt, user_text):
@@ -98,7 +99,8 @@ def try_huggingface(system_prompt, user_text):
         payload = {"inputs": system_prompt + "\n\n" + user_text}
         r = requests.post(url, headers=headers, json=payload)
         return r.json()[0]["generated_text"].replace(payload["inputs"], "").strip()
-    except:
+    except Exception as e:
+        print(f"❌ HUGGINGFACE ERROR: {e}")
         return None
 
 def generate_ai(system_prompt, user_text, image_data=None):
@@ -173,6 +175,7 @@ def image(message):
         system_prompt = SKILLS[user_states[chat_id]]
         result = generate_ai(system_prompt, caption, image_data=downloaded_file)
     except Exception as e:
+        print(f"❌ IMAGE ERROR: {e}")
         result = "❌ Failed to process the image."
     bot.delete_message(chat_id, wait.message_id)
     bot.send_message(chat_id, result)
@@ -202,7 +205,8 @@ def webhook():
 
 @app.route('/api/set_webhook', methods=['GET'])
 def set_webhook():
-    webhook_url = f"https://{request.host}/api/webhook"
+    # ✅ Hardcoded URL — Vercel এ request.host কাজ করে না
+    webhook_url = "https://humanify-ai-bot.vercel.app/api/webhook"
     bot.remove_webhook()
     bot.set_webhook(url=webhook_url)
     return f"✅ Webhook set to: {webhook_url}", 200
